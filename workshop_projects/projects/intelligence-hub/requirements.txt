@@ -19,3 +19,7 @@ pydantic>=2.0.0        # Structured output validation
 
 # Environment
 python-dotenv>=1.0.0   # Load .env file for API keys
+
+# UI (optional - for streamlit_app.py)
+streamlit>=1.30.0      # Interactive web UI for the pipeline
+pandas>=2.0.0          # Data display in Streamlit tables

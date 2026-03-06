@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligence Hub - Architecture Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        header {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        header p { color: #94a3b8; font-size: 1.1rem; }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            background: #0f172a;
+            padding: 1rem 0;
+            z-index: 100;
+            border-bottom: 1px solid #1e293b;
+        }
+        .nav a {
+            padding: 0.5rem 1.2rem;
+            background: #1e293b;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .nav a:hover { background: #334155; color: #e2e8f0; }
+
+        .diagram-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid #334155;
+        }
+        .diagram-section h2 {
+            font-size: 1.5rem;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .diagram-section .subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        .mermaid {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+        .mermaid svg { max-width: 100%; height: auto; }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .legend-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .info-card {
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 1.2rem;
+            border: 1px solid #334155;
+        }
+        .info-card h4 {
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .info-card p { color: #94a3b8; font-size: 0.85rem; }
+        .info-card code {
+            background: #1e293b;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #a5b4fc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.6rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+            font-size: 0.9rem;
+        }
+        th { color: #94a3b8; font-weight: 600; }
+        td { color: #cbd5e1; }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #475569;
+            font-size: 0.85rem;
+            border-top: 1px solid #1e293b;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 1.8rem; }
+            .diagram-section { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Document Intelligence Hub</h1>
+            <p>Multi-Agent Architecture &mdash; 7 Agents, 4 Parallel, with Quality Gates &amp; Adaptive Retry</p>
+        </header>
+
+        <nav class="nav">
+            <a href="#pipeline">Pipeline Flow</a>
+            <a href="#agents">Agent Details</a>
+            <a href="#parallel">Parallel Execution</a>
+            <a href="#retry">Adaptive Retry</a>
+            <a href="#data">Data Flow</a>
+            <a href="#rate">Rate Limiting</a>
+            <a href="#files">File Structure</a>
+        </nav>
+
+        <!-- ========== DIAGRAM 1: MAIN PIPELINE ========== -->
+        <section id="pipeline" class="diagram-section">
+            <h2>1. End-to-End Pipeline Flow</h2>
+            <p class="subtitle">The complete 7-step pipeline from PDF input to Intelligence Report</p>
+            <div class="mermaid">
+flowchart TD
+    PDF["fa:fa-file-pdf PDF Document"]:::input --> LOAD["1. Load & Chunk<br/><i>PyMuPDF (fitz)</i><br/>300 words/chunk, 50 overlap"]:::process
+    LOAD --> INDEX["2. Build FAISS Index<br/><i>all-MiniLM-L6-v2</i><br/>384-dim embeddings (local, free)"]:::process
+    INDEX --> SELECT["3. Select Diverse Chunks<br/>Search 3 aspects x k=3<br/>Deduplicate -> 10 unique chunks"]:::process
+    SELECT --> PLANNER["4. PLANNER Agent<br/><i>Llama 3.1 8B (cheap/fast)</i><br/>Identifies type, topic, themes"]:::agent_cheap
+
+    PLANNER --> PARALLEL["5. Parallel Analysis<br/><i>ThreadPoolExecutor(4)</i>"]:::parallel
+
+    PARALLEL --> SUM["Summarizer<br/>Executive summary<br/>+ key points"]:::agent_strong
+    PARALLEL --> FACT["Fact Extractor<br/>6-10 facts with<br/>type & importance"]:::agent_strong
+    PARALLEL --> QUIZ["Quiz Generator<br/>5 MCQs testing<br/>understanding"]:::agent_strong
+    PARALLEL --> GAP["Gap Analyzer<br/>3-5 gaps with<br/>severity rating"]:::agent_strong
+
+    SUM --> MERGE["Merge Results<br/><i>Error boundaries:<br/>failed agents -> empty output</i>"]:::process
+    FACT --> MERGE
+    QUIZ --> MERGE
+    GAP --> MERGE
+
+    MERGE --> CRITIC["6. CRITIC Agent<br/><i>Llama 3.3 70B</i><br/>Quality gate: validates<br/>all outputs vs source"]:::agent_critic
+
+    CRITIC -->|"score >= 0.7<br/>PASS"| REPORT["7. Report Compiler<br/><i>Pure Python (no LLM)</i><br/>Assembles final report"]:::process
+    CRITIC -->|"score < 0.7<br/>FAIL"| RETRY{"Retries<br/>remaining?"}:::decision
+
+    RETRY -->|"Yes"| FEEDBACK["Feed critic feedback<br/>back to Planner"]:::feedback
+    RETRY -->|"No"| REPORT
+
+    FEEDBACK --> PLANNER
+
+    REPORT --> OUTPUT["Intelligence Report<br/>+ Cost Report<br/>+ Execution Log"]:::output
+
+    classDef input fill:#dbeafe,stroke:#3b82f6,color:#1e40af,stroke-width:2px
+    classDef process fill:#f0fdf4,stroke:#22c55e,color:#166534,stroke-width:1px
+    classDef agent_cheap fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2px
+    classDef agent_strong fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6,stroke-width:2px
+    classDef agent_critic fill:#fce7f3,stroke:#ec4899,color:#9d174d,stroke-width:2px
+    classDef parallel fill:#e0f2fe,stroke:#0ea5e9,color:#0c4a6e,stroke-width:2px
+    classDef decision fill:#fff7ed,stroke:#f97316,color:#9a3412,stroke-width:2px
+    classDef feedback fill:#fef2f2,stroke:#ef4444,color:#991b1b,stroke-width:2px,stroke-dasharray: 5 5
+    classDef output fill:#ecfdf5,stroke:#10b981,color:#065f46,stroke-width:2px
+            </div>
+            <div class="legend">
+                <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Input</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Processing (no LLM)</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Cheap Model (8B)</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span> Strong Model (70B)</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#ec4899"></span> Critic (Quality Gate)</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#0ea5e9"></span> Parallel Execution</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#ef4444;border:2px dashed #ef4444;background:transparent"></span> Feedback Loop</div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 2: AGENT DETAILS ========== -->
+        <section id="agents" class="diagram-section">
+            <h2>2. Agent Specifications</h2>
+            <p class="subtitle">Each agent's role, model, input/output, and responsibility</p>
+            <div class="mermaid">
+graph LR
+    subgraph PLANNING["PLANNING PHASE"]
+        direction TB
+        P["PLANNER<br/>---<br/>Model: 8B Instant<br/>Input: 5 chunks<br/>Output: JSON plan<br/>Cost: ~2,500 tokens"]
+    end
+
+    subgraph ANALYSIS["ANALYSIS PHASE (Parallel)"]
+        direction TB
+        S["SUMMARIZER<br/>---<br/>Model: 70B<br/>Input: 6 chunks + plan<br/>Output: summary + points<br/>Cost: ~3,500 tokens"]
+        F["FACT EXTRACTOR<br/>---<br/>Model: 70B<br/>Input: 6 chunks<br/>Output: 6-10 facts<br/>Cost: ~3,500 tokens"]
+        Q["QUIZ GENERATOR<br/>---<br/>Model: 70B<br/>Input: 6 chunks + plan<br/>Output: 5 MCQs<br/>Cost: ~3,500 tokens"]
+        G["GAP ANALYZER<br/>---<br/>Model: 70B<br/>Input: 6 chunks + plan<br/>Output: 3-5 gaps<br/>Cost: ~3,500 tokens"]
+    end
+
+    subgraph VALIDATION["VALIDATION PHASE"]
+        direction TB
+        C["CRITIC<br/>---<br/>Model: 70B<br/>Input: 5 chunks + outputs<br/>Output: scores + verdict<br/>Cost: ~3,500 tokens"]
+    end
+
+    subgraph REPORTING["REPORTING PHASE"]
+        direction TB
+        R["REPORT COMPILER<br/>---<br/>Model: None (Python)<br/>Input: all agent outputs<br/>Output: formatted report<br/>Cost: 0 tokens"]
+    end
+
+    PLANNING --> ANALYSIS --> VALIDATION --> REPORTING
+
+    style PLANNING fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style ANALYSIS fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6
+    style VALIDATION fill:#fce7f3,stroke:#ec4899,color:#9d174d
+    style REPORTING fill:#f0fdf4,stroke:#22c55e,color:#166534
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Planner Agent</h4>
+                    <p>Analyzes document structure. Identifies type (textbook, paper, report), main topic, 5 key themes, target audience, and complexity level. Uses the <code>cheap</code> 8B model since this is a classification task.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Summarizer Agent</h4>
+                    <p>Writes 3-5 sentence executive summary grounded in source chunks. Extracts key points. Uses the Planner's themes to focus the summary. Every claim must come from the provided chunks.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Fact Extractor Agent</h4>
+                    <p>Extracts 6-10 important facts, numbers, formulas, and claims. Classifies each by type (fact/claim/formula/statistic) and importance (high/medium/low). Only extracts what's explicitly stated.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Quiz Generator Agent</h4>
+                    <p>Creates 5 MCQs testing understanding, not recall. Mix of 2 easy, 2 medium, 1 hard. Each question has 4 options, correct answer, and explanation. Tests concepts and application.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Gap Analyzer Agent</h4>
+                    <p>Identifies 3-5 missing or underexplained topics. Rates severity (critical/moderate/minor). Provides a coverage score (0-1) and recommendation. Helps identify areas for improvement.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Critic Agent (Quality Gate)</h4>
+                    <p>Validates ALL outputs against source chunks. Scores each section 0-1. If overall score < 0.7, triggers adaptive retry. Provides improvement hints that feed back to the Planner.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 3: PARALLEL EXECUTION ========== -->
+        <section id="parallel" class="diagram-section">
+            <h2>3. Parallel Execution & Error Boundaries</h2>
+            <p class="subtitle">How 4 agents run concurrently with isolated failure handling</p>
+            <div class="mermaid">
+sequenceDiagram
+    participant M as Main Thread
+    participant TP as ThreadPoolExecutor
+    participant S as Summarizer
+    participant F as Fact Extractor
+    participant Q as Quiz Generator
+    participant G as Gap Analyzer
+    participant API as Groq API
+
+    M->>TP: Submit 4 agents (each gets state copy)
+
+    par Agent 1
+        TP->>S: Start (state copy)
+        Note over S: Rate limit wait (4s)
+        S->>API: call_llm_strong()
+        API-->>S: JSON response
+        S-->>TP: state["summary"] = result
+    and Agent 2
+        TP->>F: Start (state copy)
+        Note over F: Rate limit wait (4s)
+        F->>API: call_llm_strong()
+        API-->>F: JSON response
+        F-->>TP: state["facts"] = result
+    and Agent 3
+        TP->>Q: Start (state copy)
+        Note over Q: Rate limit wait (4s)
+        Q->>API: call_llm_strong()
+        API-->>Q: JSON response
+        Q-->>TP: state["quiz"] = result
+    and Agent 4
+        TP->>G: Start (state copy)
+        Note over G: Rate limit wait (4s)
+        G->>API: call_llm_strong()
+        Note over G,API: If this fails...
+        G--xTP: Exception caught!
+        Note over TP: state["gaps"] = {} (empty)
+        Note over TP: Error logged, pipeline continues
+    end
+
+    TP-->>M: Merge all results into main state
+    Note over M: 3 succeeded, 1 failed = pipeline continues
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>State Copying</h4>
+                    <p><code>agent_state = {**state}</code> creates a shallow copy for each agent. This prevents race conditions where agents overwrite each other's results.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Error Boundary Pattern</h4>
+                    <p>Each <code>future.result()</code> is wrapped in try/except. A crashed agent produces <code>{}</code> empty output. The Critic scores it as 0, but other agents' work is preserved.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Rate Limit Staggering</h4>
+                    <p>The <code>threading.Lock()</code> in <code>call_llm</code> ensures only one API call starts at a time with 4s delay. Parallel agents naturally stagger: t=0, t=4s, t=8s, t=12s.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 4: ADAPTIVE RETRY ========== -->
+        <section id="retry" class="diagram-section">
+            <h2>4. Adaptive Retry Loop</h2>
+            <p class="subtitle">How the Critic's feedback improves results on retry (not blind retry)</p>
+            <div class="mermaid">
+flowchart LR
+    subgraph ATTEMPT1["Attempt 1"]
+        P1["Planner<br/>(no feedback)"] --> A1["4 Agents<br/>(parallel)"] --> C1["Critic<br/>Score: 0.55"]
+    end
+
+    C1 -->|"FAIL < 0.7<br/>Feedback: 'Summary<br/>has hallucinated claims,<br/>Quiz Q3 not answerable'"| FB["Critic Feedback<br/>stored in<br/>state._critic_feedback"]
+
+    FB --> P2
+
+    subgraph ATTEMPT2["Attempt 2 (Adaptive)"]
+        P2["Planner<br/>(WITH feedback)<br/>Adjusts themes"] --> A2["4 Agents<br/>(parallel)<br/>Better focused"] --> C2["Critic<br/>Score: 0.82"]
+    end
+
+    C2 -->|"PASS >= 0.7"| REPORT["Report<br/>Compiled"]
+
+    style ATTEMPT1 fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style ATTEMPT2 fill:#f0fdf4,stroke:#22c55e,color:#166534
+    style FB fill:#fff7ed,stroke:#f97316,color:#9a3412
+    style REPORT fill:#ecfdf5,stroke:#10b981,color:#065f46
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Why Not Blind Retry?</h4>
+                    <p>With <code>temperature=0</code>, re-running the same prompt gives the same output. Adaptive retry changes the Planner's input by including the Critic's feedback, producing genuinely different analysis.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Budget Guard</h4>
+                    <p><code>tracker.check_budget()</code> runs before each retry. If the budget can't cover another full cycle (~17K tokens), the pipeline stops gracefully instead of overspending.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 5: DATA FLOW ========== -->
+        <section id="data" class="diagram-section">
+            <h2>5. Shared State & Data Flow</h2>
+            <p class="subtitle">How data flows through the pipeline via the shared state dictionary</p>
+            <div class="mermaid">
+flowchart TD
+    subgraph STATE["Shared State Dictionary"]
+        direction LR
+        Q["query: ''"]
+        CH["chunks: [{text, score, index}]"]
+        PL["plan: {type, topic, themes, ...}"]
+        SM["summary: {summary, key_points}"]
+        FA["facts: {facts: [{fact, type, importance}]}"]
+        QZ["quiz: {questions: [{q, options, correct}]}"]
+        GP["gaps: {gaps: [{topic, severity}]}"]
+        CR["critic: {scores, verdict, hints}"]
+        LG["log: [{agent, timestamp, tokens}]"]
+        ER["errors: [{agent, error, traceback}]"]
+    end
+
+    INIT["init_state()"] -->|creates| STATE
+
+    LOAD["load_and_chunk()"] -->|populates| CH
+    PLANNER["planner()"] -->|writes| PL
+    PLANNER -.->|reads| CH
+
+    SUM["summarizer()"] -->|writes| SM
+    SUM -.->|reads| CH
+    SUM -.->|reads| PL
+
+    FEXT["fact_extractor()"] -->|writes| FA
+    FEXT -.->|reads| CH
+
+    QGEN["quiz_generator()"] -->|writes| QZ
+    QGEN -.->|reads| CH
+    QGEN -.->|reads| PL
+
+    GANA["gap_analyzer()"] -->|writes| GP
+    GANA -.->|reads| CH
+    GANA -.->|reads| PL
+
+    CRIT["critic()"] -->|writes| CR
+    CRIT -.->|reads| SM
+    CRIT -.->|reads| FA
+    CRIT -.->|reads| QZ
+    CRIT -.->|reads| GP
+    CRIT -.->|reads| CH
+
+    ALL["All agents"] -->|append to| LG
+
+    style STATE fill:#f8fafc,stroke:#64748b,color:#1e293b
+    style INIT fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 6: RATE LIMITING ========== -->
+        <section id="rate" class="diagram-section">
+            <h2>6. Rate Limiting Strategy</h2>
+            <p class="subtitle">How the pipeline respects Groq free tier limits (TPM, TPD, RPM)</p>
+            <div class="mermaid">
+flowchart TD
+    subgraph LIMITS["Groq Free Tier Limits"]
+        L1["llama-3.1-8b-instant<br/>RPM: 30 | TPM: 6K | TPD: 500K"]
+        L2["llama-3.3-70b-versatile<br/>RPM: 30 | TPM: 12K | TPD: 100K"]
+    end
+
+    subgraph STRATEGY["Our Strategy"]
+        direction TB
+        S1["1. Reduce chunks per agent<br/>15 -> 6 chunks<br/>(~60% fewer input tokens)"]
+        S2["2. Reduce output tokens<br/>max_tokens: 8192 -> 2000<br/>(prevents oversized responses)"]
+        S3["3. Thread-safe rate limiter<br/>4-second delay between calls<br/>(threading.Lock prevents overlap)"]
+        S4["4. 429 error handling<br/>30+ second backoff on rate limit<br/>(auto-retry, don't crash)"]
+        S5["5. Reduce retries<br/>max_retries: 2 -> 1<br/>(each retry = 5 more API calls)"]
+    end
+
+    subgraph BUDGET["Token Budget Per Run"]
+        B1["Planner: ~2,500 tokens (8B)"]
+        B2["4 Analysis Agents: ~14,000 tokens (70B)"]
+        B3["Critic: ~3,500 tokens (70B)"]
+        B4["TOTAL: ~20,000 tokens"]
+        B5["Daily runs possible: ~5"]
+    end
+
+    LIMITS --> STRATEGY --> BUDGET
+
+    style LIMITS fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style STRATEGY fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style BUDGET fill:#f0fdf4,stroke:#22c55e,color:#166534
+            </div>
+
+            <table>
+                <thead>
+                    <tr><th>Change</th><th>Before</th><th>After</th><th>Impact</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Chunks per analysis agent</td><td>15</td><td>6</td><td>-60% input tokens</td></tr>
+                    <tr><td>Chunks for Planner</td><td>8</td><td>5</td><td>Stays under 8B TPM (6K)</td></tr>
+                    <tr><td>Chunks for Critic</td><td>10</td><td>5</td><td>-50% critic tokens</td></tr>
+                    <tr><td>max_tokens (70B output)</td><td>8,192</td><td>2,000</td><td>Prevents oversized responses</td></tr>
+                    <tr><td>Default max_retries</td><td>2</td><td>1</td><td>Each retry = 5 more API calls</td></tr>
+                    <tr><td>Inter-call delay</td><td>None</td><td>4 seconds</td><td>Prevents TPM overflow</td></tr>
+                    <tr><td>429 error backoff</td><td>2-4s</td><td>30+ seconds</td><td>Groq needs time to reset</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ========== DIAGRAM 7: FILE STRUCTURE ========== -->
+        <section id="files" class="diagram-section">
+            <h2>7. File Structure & Dependencies</h2>
+            <p class="subtitle">How the project files relate to each other</p>
+            <div class="mermaid">
+graph TD
+    subgraph CORE["Core Files"]
+        H["helpers.py<br/><i>705 lines</i><br/>---<br/>CostTracker<br/>SemanticCache<br/>EvalHarness<br/>load_and_chunk()<br/>embed() / build_index() / search()<br/>call_llm() / call_llm_cheap() / call_llm_strong()<br/>parse_json()<br/>Rate limiter"]:::core
+    end
+
+    subgraph SOLUTION["Complete Solution"]
+        P["project_intelligence_hub.py<br/><i>514 lines</i><br/>---<br/>7 Agent functions<br/>Parallel execution<br/>Adaptive retry<br/>Report compiler<br/>Evaluation mode"]:::solution
+    end
+
+    subgraph STARTER["Student Code"]
+        S["hub_starter.py<br/><i>372 lines</i><br/>---<br/>Agent functions (given)<br/>Pipeline (TODO)<br/>5 Milestones"]:::starter
+    end
+
+    subgraph UI["Web Interface"]
+        ST["streamlit_app.py<br/><i>~420 lines</i><br/>---<br/>File upload<br/>Progress tracking<br/>Interactive quiz<br/>Cost dashboard"]:::ui
+    end
+
+    subgraph CONFIG["Config"]
+        ENV[".env<br/>GROQ_API_KEY"]:::config
+        REQ["requirements.txt<br/>7 packages"]:::config
+    end
+
+    subgraph DOCS["Documentation"]
+        GUIDE["INTELLIGENCE_HUB_GUIDE.md<br/>Complete code walkthrough"]:::docs
+        ARCH["architecture.html<br/>This file"]:::docs
+    end
+
+    subgraph DATA["Sample Data"]
+        PDF1["cloud_computing.pdf"]:::data
+        PDF2["neural_networks.pdf"]:::data
+        PDF3["sustainable_energy.pdf"]:::data
+    end
+
+    P -->|imports| H
+    S -->|imports| H
+    ST -->|imports| H
+    ST -->|imports| P
+
+    ENV -.->|loads API key| H
+    REQ -.->|pip install| H
+
+    PDF1 -.->|input| P
+    PDF2 -.->|input| P
+    PDF3 -.->|input| P
+
+    classDef core fill:#dbeafe,stroke:#3b82f6,color:#1e40af,stroke-width:2px
+    classDef solution fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6,stroke-width:2px
+    classDef starter fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2px
+    classDef ui fill:#fce7f3,stroke:#ec4899,color:#9d174d,stroke-width:2px
+    classDef config fill:#f0fdf4,stroke:#22c55e,color:#166534
+    classDef docs fill:#e0f2fe,stroke:#0ea5e9,color:#0c4a6e
+    classDef data fill:#f8fafc,stroke:#94a3b8,color:#475569
+            </div>
+        </section>
+
+        <footer>
+            <p>Multi-Agent Document Intelligence Hub &mdash; Architecture Reference</p>
+            <p>Open this file in any browser. Diagrams rendered with Mermaid.js</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 15,
+                nodeSpacing: 30,
+                rankSpacing: 40
+            },
+            sequence: {
+                useMaxWidth: true,
+                showSequenceNumbers: false,
+                actorMargin: 30,
+                messageMargin: 30
+            }
+        });
+    </script>
+</body>
+</html>

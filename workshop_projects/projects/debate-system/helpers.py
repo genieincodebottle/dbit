@@ -3,20 +3,18 @@ Shared Helper Utilities for Multi-Agent Workshop
 ================================================
 Building blocks used by ALL labs and projects:
   - PDF loading and chunking
-  - Embedding (text -> vector)
+  - Embedding (text -> vector) using open-source sentence-transformers (free, local)
   - FAISS index (build + search)
-  - LLM calling (Gemini, OpenAI, or Anthropic) with retry + backoff
+  - LLM calling (Groq) with retry + backoff
   - Cost tracking (real-time token/dollar estimates)
   - Evaluation harness (benchmark your pipeline)
   - State management + structured logging
 """
 
-# Suppress noisy gRPC/ALTS warnings before any Google imports
 import warnings
-warnings.filterwarnings("ignore", message=".*ALTS.*")
 warnings.filterwarnings("ignore", category=FutureWarning)
 import logging
-logging.getLogger("grpc").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
 import fitz  # PyMuPDF - install with: pip install pymupdf
 import faiss
@@ -26,53 +24,69 @@ import time
 import re
 import os
 import hashlib
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # ============================================================
-# LLM CLIENT SETUP
+# RATE LIMITING (Groq Free Tier)
+# ============================================================
+# Free tier limits (from console.groq.com):
+#   llama-3.1-8b-instant:    RPM=30, RPD=14.4K, TPM=6K,  TPD=500K
+#   llama-3.3-70b-versatile: RPM=30, RPD=1K,    TPM=12K, TPD=100K
+#
+# Using 8b model only to avoid 70b limits (1K RPD, 100K TPD).
+# 8b has generous limits: 14.4K RPD, 500K TPD - plenty for labs.
+# Strategy: enforce delay between calls + keep max_tokens low + handle 429 gracefully.
+
+_rate_limit_lock = threading.Lock()
+_last_llm_call_time = 0
+RATE_LIMIT_DELAY = 5  # seconds between API calls (keeps us safely under TPM limits)
+
+# ============================================================
+# LLM CLIENT SETUP (Groq - free tier)
 # ============================================================
 
 PROVIDER = None
 _client = None
 
-if os.getenv("GEMINI_API_KEY"):
-    from google import genai
-    _client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    PROVIDER = "gemini"
-    print("[helpers] Using Google Gemini API")
-elif os.getenv("OPENAI_API_KEY"):
-    from openai import OpenAI
-    _client = OpenAI()
-    PROVIDER = "openai"
-    print("[helpers] Using OpenAI API")
-elif os.getenv("ANTHROPIC_API_KEY"):
-    import anthropic
-    _client = anthropic.Anthropic()
-    PROVIDER = "anthropic"
-    print("[helpers] Using Anthropic API")
+if os.getenv("GROQ_API_KEY"):
+    from groq import Groq
+    _client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    PROVIDER = "groq"
+    print("[helpers] Using Groq API (free tier)")
 else:
-    print("[helpers] WARNING: No API key found. Set GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY in .env")
+    print("[helpers] WARNING: No API key found. Set GROQ_API_KEY in .env")
+
+# ============================================================
+# EMBEDDING MODEL SETUP (local, open-source, free)
+# ============================================================
+
+_embed_model = None
+
+def _get_embed_model():
+    """Lazy-load the sentence-transformers embedding model."""
+    global _embed_model
+    if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
+        _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+        print("[helpers] Loaded local embedding model: all-MiniLM-L6-v2 (free, 384 dims)")
+    return _embed_model
 
 
 # ============================================================
 # COST TRACKING
 # ============================================================
 
-# Pricing per 1M tokens (USD) - update if models change
+# Pricing per 1M tokens (USD) - Groq free tier = $0.00
 MODEL_PRICING = {
-    "gpt-4o-mini":    {"input": 0.15,  "output": 0.60},
-    "gpt-4o":         {"input": 2.50,  "output": 10.00},
-    "gpt-4.1-mini":   {"input": 0.40,  "output": 1.60},
-    "gpt-4.1":        {"input": 2.00,  "output": 8.00},
-    "claude-haiku-4-5-20251001":  {"input": 0.80,  "output": 4.00},
-    "claude-sonnet-4-20250514":   {"input": 3.00,  "output": 15.00},
-    "text-embedding-3-small":     {"input": 0.02,  "output": 0.00},
-    "gemini-2.0-flash":           {"input": 0.10,  "output": 0.40},
-    "gemini-2.5-flash":           {"input": 0.15, "output": 0.60},
-    "gemini-2.5-pro":             {"input": 1.25, "output": 10.00},
-    "gemini-embedding-001":       {"input": 0.00,  "output": 0.00},
+    "llama-3.1-8b-instant":       {"input": 0.00,  "output": 0.00},
+    "llama-3.3-70b-versatile":    {"input": 0.00,  "output": 0.00},
+    "llama3-70b-8192":            {"input": 0.00,  "output": 0.00},
+    "gemma2-9b-it":               {"input": 0.00,  "output": 0.00},
+    "mixtral-8x7b-32768":         {"input": 0.00,  "output": 0.00},
+    "local-embedding":            {"input": 0.00,  "output": 0.00},
 }
 
 
@@ -221,47 +235,21 @@ def load_and_chunk(pdf_path, chunk_size=300, overlap=50):
 
 def embed(text):
     """
-    Convert text into a vector embedding.
+    Convert text into a vector embedding using a local open-source model.
+    Uses sentence-transformers (all-MiniLM-L6-v2) - completely free, no API calls.
     Similar meanings produce similar vectors, enabling semantic search.
     """
-    if PROVIDER == "gemini":
-        result = _client.models.embed_content(
-            model="gemini-embedding-001",
-            contents=text,
-            config={"task_type": "RETRIEVAL_DOCUMENT"}
-        )
-        return np.array(result.embeddings[0].values, dtype='float32')
-    elif PROVIDER == "openai":
-        resp = _client.embeddings.create(model="text-embedding-3-small", input=text)
-        return np.array(resp.data[0].embedding, dtype='float32')
-    elif PROVIDER == "anthropic":
-        try:
-            from openai import OpenAI as _OAI
-            _embed_client = _OAI()
-            resp = _embed_client.embeddings.create(model="text-embedding-3-small", input=text)
-            return np.array(resp.data[0].embedding, dtype='float32')
-        except Exception:
-            raise RuntimeError(
-                "Anthropic doesn't provide embeddings. "
-                "Set OPENAI_API_KEY in .env for embeddings."
-            )
-    else:
-        raise RuntimeError("No API client configured. Check your .env file.")
+    model = _get_embed_model()
+    vec = model.encode(text, convert_to_numpy=True)
+    return vec.astype('float32')
 
 
 def build_index(chunks):
     """Build a FAISS index from text chunks. Returns the searchable index."""
-    print(f"  Embedding {len(chunks)} chunks...")
-    vecs = []
-    for i, chunk in enumerate(chunks):
-        vecs.append(embed(chunk))
-        # Rate limit for Gemini free tier (1500 RPM, but burst-safe at ~5 RPS)
-        if PROVIDER == "gemini" and (i + 1) % 5 == 0:
-            time.sleep(0.5)
-        if (i + 1) % 20 == 0 or (i + 1) == len(chunks):
-            print(f"    {i + 1}/{len(chunks)} embedded")
-
-    matrix = np.array(vecs).astype('float32')
+    print(f"  Embedding {len(chunks)} chunks (local model - no API calls)...")
+    model = _get_embed_model()
+    # Batch encode all chunks at once for efficiency (local model, no rate limits)
+    matrix = model.encode(chunks, convert_to_numpy=True, show_progress_bar=False).astype('float32')
     index = faiss.IndexFlatL2(matrix.shape[1])
     index.add(matrix)
     print(f"  Index ready: {index.ntotal} vectors, {matrix.shape[1]} dimensions")
@@ -289,19 +277,19 @@ def search(index, chunks, query, k=5):
 # ============================================================
 
 def call_llm(prompt, system="You are a helpful assistant.",
-             model=None, temperature=0, max_tokens=2000, json_output=False,
-             retries=2, backoff_base=2.0):
+             model=None, temperature=0, max_tokens=1024, json_output=False,
+             retries=1, backoff_base=2.0):
     """
     Call the LLM with automatic retry on transient failures.
+    Includes rate-limit-aware retry (429 errors get 30s+ backoff).
 
     Retry strategy (exponential backoff):
       Attempt 1: immediate
-      Attempt 2: wait 2s
-      Attempt 3: wait 4s
+      Attempt 2: wait 2s (or 30s for rate limits)
 
     Args:
         prompt, system, model, temperature, max_tokens, json_output: standard LLM params
-        retries:      Number of retry attempts on failure (default 2)
+        retries:      Number of retry attempts on failure (default 1, kept low for free tier)
         backoff_base: Base seconds for exponential backoff (default 2.0)
 
     Returns:
@@ -314,49 +302,30 @@ def call_llm(prompt, system="You are a helpful assistant.",
 
     for attempt in range(retries + 1):
         try:
+            # Rate limiting: enforce minimum delay between API calls
+            # This prevents hitting Groq free tier TPM limits
+            global _last_llm_call_time
+            with _rate_limit_lock:
+                now = time.time()
+                elapsed = now - _last_llm_call_time
+                if elapsed < RATE_LIMIT_DELAY:
+                    time.sleep(RATE_LIMIT_DELAY - elapsed)
+                _last_llm_call_time = time.time()
+
             start = time.time()
 
-            if PROVIDER == "gemini":
-                m = model or "gemini-2.0-flash"
-                combined_prompt = f"{system}\n\n{prompt}"
+            if PROVIDER == "groq":
+                m = model or "llama-3.1-8b-instant"
+                sys_prompt = system
                 if json_output:
-                    combined_prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No explanation, no markdown code fences."
+                    sys_prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No explanation, no markdown code fences."
 
-                gen_config = {
-                    "temperature": temperature,
-                    "max_output_tokens": max_tokens,
-                }
-                if json_output:
-                    gen_config["response_mime_type"] = "application/json"
-
-                response = _client.models.generate_content(
-                    model=m,
-                    contents=combined_prompt,
-                    config=gen_config,
-                )
-                elapsed = time.time() - start
-
-                # Extract token counts from usage metadata
-                usage = response.usage_metadata
-                input_tokens = getattr(usage, 'prompt_token_count', 0) if usage else 0
-                output_tokens = getattr(usage, 'candidates_token_count', 0) if usage else 0
-
-                return {
-                    "text": response.text,
-                    "tokens": {
-                        "input": input_tokens,
-                        "output": output_tokens
-                    },
-                    "latency_ms": int(elapsed * 1000),
-                    "model": m
-                }
-
-            elif PROVIDER == "openai":
-                m = model or "gpt-4o-mini"
                 kwargs = {
-                    "model": m, "temperature": temperature, "max_tokens": max_tokens,
+                    "model": m,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
                     "messages": [
-                        {"role": "system", "content": system},
+                        {"role": "system", "content": sys_prompt},
                         {"role": "user", "content": prompt}
                     ]
                 }
@@ -375,35 +344,19 @@ def call_llm(prompt, system="You are a helpful assistant.",
                     "latency_ms": int(elapsed * 1000),
                     "model": m
                 }
-
-            elif PROVIDER == "anthropic":
-                m = model or "claude-haiku-4-5-20251001"
-                sys_prompt = system
-                if json_output:
-                    sys_prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No explanation, no markdown."
-
-                response = _client.messages.create(
-                    model=m, max_tokens=max_tokens, temperature=temperature,
-                    system=sys_prompt,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                elapsed = time.time() - start
-
-                return {
-                    "text": response.content[0].text,
-                    "tokens": {
-                        "input": response.usage.input_tokens,
-                        "output": response.usage.output_tokens
-                    },
-                    "latency_ms": int(elapsed * 1000),
-                    "model": m
-                }
             else:
-                raise RuntimeError("No API client configured.")
+                raise RuntimeError("No API client configured. Set GROQ_API_KEY in .env")
 
         except Exception as e:
             last_error = e
-            if attempt < retries:
+            error_msg = str(e).lower()
+
+            # Handle rate limit errors (429) with longer backoff
+            if "rate_limit" in error_msg or "429" in error_msg or "too many" in error_msg:
+                wait = max(30, backoff_base ** (attempt + 3))
+                print(f"    [rate limit] Groq free tier limit hit. Waiting {wait:.0f}s before retry...")
+                time.sleep(wait)
+            elif attempt < retries:
                 wait = backoff_base ** attempt
                 print(f"    [retry] Attempt {attempt + 1} failed: {e}. Waiting {wait:.0f}s...")
                 time.sleep(wait)
@@ -412,27 +365,21 @@ def call_llm(prompt, system="You are a helpful assistant.",
 
 
 def call_llm_cheap(prompt, system="You are a helpful assistant.",
-                   temperature=0, max_tokens=1000, json_output=False):
-    """Cheap/fast model: Gemini Flash, GPT-4o-mini, or Haiku. Use for planners and simple routing."""
-    if PROVIDER == "gemini":
-        model = "gemini-2.0-flash"
-    elif PROVIDER == "openai":
-        model = "gpt-4o-mini"
-    else:
-        model = "claude-haiku-4-5-20251001"
+                   temperature=0, max_tokens=500, json_output=False):
+    """Fast model: Llama 3.1 8B on Groq (free). Use for planners and simple routing.
+    max_tokens=500 (planner JSON is small)."""
+    model = "llama-3.1-8b-instant"
     return call_llm(prompt, system, model=model,
                     temperature=temperature, max_tokens=max_tokens, json_output=json_output)
 
 
 def call_llm_strong(prompt, system="You are a helpful assistant.",
-                    temperature=0, max_tokens=8192, json_output=False):
-    """Strong model: Gemini 2.5 Flash, GPT-4o, or Sonnet. Use for reasoning, debate, judgment."""
-    if PROVIDER == "gemini":
-        model = "gemini-2.5-flash"
-    elif PROVIDER == "openai":
-        model = "gpt-4o"
-    else:
-        model = "claude-sonnet-4-20250514"
+                    temperature=0, max_tokens=1024, json_output=False):
+    """Strong model: Also Llama 3.1 8B on Groq (free). Use for reasoning, debate, judgment.
+    Using 8b for all calls to avoid 70b limits (1K RPD, 100K TPD).
+    8b has 14.4K RPD and 500K TPD - plenty for lab use across multiple projects.
+    Students can swap to llama-3.3-70b-versatile if they have a paid plan."""
+    model = "llama-3.1-8b-instant"
     return call_llm(prompt, system, model=model,
                     temperature=temperature, max_tokens=max_tokens, json_output=json_output)
 
@@ -445,7 +392,7 @@ def parse_json(text):
     """
     Safely parse JSON from LLM output.
     Handles markdown code blocks, surrounding text, and common formatting issues.
-    Wraps bare arrays in a dict with an auto-detected key (Gemini sometimes returns arrays).
+    Wraps bare arrays in a dict with an auto-detected key (LLMs sometimes return arrays).
     """
     # Strip markdown code fences
     text = re.sub(r'^```(?:json)?\s*', '', text.strip())

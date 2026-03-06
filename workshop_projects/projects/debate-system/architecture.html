@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debate System - Architecture Diagrams</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        header {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 2rem;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #22c55e, #3b82f6, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        header p { color: #94a3b8; font-size: 1.1rem; }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            background: #0f172a;
+            padding: 1rem 0;
+            z-index: 100;
+            border-bottom: 1px solid #1e293b;
+        }
+        .nav a {
+            padding: 0.5rem 1.2rem;
+            background: #1e293b;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .nav a:hover { background: #334155; color: #e2e8f0; }
+
+        .diagram-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid #334155;
+        }
+        .diagram-section h2 {
+            font-size: 1.5rem;
+            color: #f1f5f9;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .diagram-section .subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        .mermaid {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+        }
+        .mermaid svg { max-width: 100%; height: auto; }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #334155;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .legend-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .info-card {
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 1.2rem;
+            border: 1px solid #334155;
+        }
+        .info-card h4 {
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .info-card.for h4 { color: #22c55e; }
+        .info-card.against h4 { color: #ef4444; }
+        .info-card.judge h4 { color: #eab308; }
+        .info-card.synthesis h4 { color: #8b5cf6; }
+        .info-card p { color: #94a3b8; font-size: 0.85rem; }
+        .info-card code {
+            background: #1e293b;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #a5b4fc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 0.6rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+            font-size: 0.9rem;
+        }
+        th { color: #94a3b8; font-weight: 600; }
+        td { color: #cbd5e1; }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #475569;
+            font-size: 0.85rem;
+            border-top: 1px solid #1e293b;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 1.8rem; }
+            .diagram-section { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Multi-Agent Debate System</h1>
+            <p>Adversarial Architecture &mdash; 7 Agents, Parallel Pairs, Cross-Examination &amp; Judicial Scoring</p>
+        </header>
+
+        <nav class="nav">
+            <a href="#pipeline">Pipeline Flow</a>
+            <a href="#agents">Agent Details</a>
+            <a href="#adversarial">Adversarial Pairs</a>
+            <a href="#round2">Conditional Round 2</a>
+            <a href="#data">Data Flow</a>
+            <a href="#scoring">Scoring Rubric</a>
+            <a href="#rate">Rate Limiting</a>
+            <a href="#files">File Structure</a>
+        </nav>
+
+        <!-- ========== DIAGRAM 1: MAIN PIPELINE ========== -->
+        <section id="pipeline" class="diagram-section">
+            <h2>1. End-to-End Pipeline Flow</h2>
+            <p class="subtitle">The complete debate pipeline from PDF + Topic to Final Report</p>
+            <div class="mermaid">
+flowchart TD
+    INPUT["PDF Document + Debate Topic"]:::input --> LOAD["1. Load & Chunk<br/><i>PyMuPDF</i><br/>300 words/chunk, 50 overlap"]:::process
+    LOAD --> INDEX["2. Build FAISS Index<br/><i>all-MiniLM-L6-v2 (local)</i><br/>384-dim embeddings"]:::process
+    INDEX --> PLANNER["3. PLANNER<br/><i>Llama 3.1 8B</i><br/>FOR position, AGAINST position<br/>debate dimensions"]:::agent_plan
+
+    PLANNER --> RES_PAR["4. Research (Parallel)"]:::parallel
+    RES_PAR --> R_FOR["Researcher FOR<br/><i>Vector search only</i><br/>8 evidence chunks"]:::agent_for
+    RES_PAR --> R_AGT["Researcher AGAINST<br/><i>Vector search only</i><br/>8 evidence chunks"]:::agent_against
+
+    R_FOR --> DEB_PAR["5. Debate (Parallel)"]:::parallel
+    R_AGT --> DEB_PAR
+    DEB_PAR --> D_FOR["Debater FOR<br/><i>Llama 3.1 8B</i><br/>3 arguments + rebuttal"]:::agent_for
+    DEB_PAR --> D_AGT["Debater AGAINST<br/><i>Llama 3.1 8B</i><br/>3 arguments + rebuttal"]:::agent_against
+
+    D_FOR --> JUDGE1["6. JUDGE - Round 1<br/><i>Llama 3.1 8B</i><br/>5 criteria x 10 pts = /50<br/>Winner + margin"]:::agent_judge
+    D_AGT --> JUDGE1
+
+    JUDGE1 --> CHECK{"Margin?"}:::decision
+
+    CHECK -->|"decisive"| SYNTH["8. SYNTHESIZER<br/><i>Llama 3.1 8B</i><br/>Balanced analysis<br/>Common ground + tension"]:::agent_synth
+    CHECK -->|"narrow or<br/>razor-thin"| CX_PAR["7. Cross-Examination<br/>(Parallel)"]:::parallel
+
+    CX_PAR --> CX_FOR["Cross-Exam FOR<br/>Challenges AGAINST's<br/>weakest point"]:::agent_for
+    CX_PAR --> CX_AGT["Cross-Exam AGAINST<br/>Challenges FOR's<br/>weakest point"]:::agent_against
+
+    CX_FOR --> JUDGE2["JUDGE - Round 2<br/>With cross-examination<br/>factored into scoring"]:::agent_judge
+    CX_AGT --> JUDGE2
+
+    JUDGE2 --> SYNTH
+
+    SYNTH --> REPORT["9. Report Compiler<br/><i>Pure Python</i><br/>Full debate report"]:::process
+    REPORT --> OUTPUT["Debate Report<br/>+ Cost Report<br/>+ Execution Log"]:::output
+
+    classDef input fill:#dbeafe,stroke:#3b82f6,color:#1e40af,stroke-width:2px
+    classDef process fill:#f0fdf4,stroke:#22c55e,color:#166534,stroke-width:1px
+    classDef agent_plan fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2px
+    classDef agent_for fill:#dcfce7,stroke:#22c55e,color:#166534,stroke-width:2px
+    classDef agent_against fill:#fee2e2,stroke:#ef4444,color:#991b1b,stroke-width:2px
+    classDef agent_judge fill:#fef9c3,stroke:#eab308,color:#854d0e,stroke-width:2px
+    classDef agent_synth fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6,stroke-width:2px
+    classDef parallel fill:#e0f2fe,stroke:#0ea5e9,color:#0c4a6e,stroke-width:2px
+    classDef decision fill:#fff7ed,stroke:#f97316,color:#9a3412,stroke-width:2px
+    classDef output fill:#ecfdf5,stroke:#10b981,color:#065f46,stroke-width:2px
+            </div>
+            <div class="legend">
+                <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Input</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> FOR Side</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> AGAINST Side</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Planner</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#eab308"></span> Judge</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span> Synthesizer</div>
+                <div class="legend-item"><span class="legend-dot" style="background:#0ea5e9"></span> Parallel Execution</div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 2: AGENT DETAILS ========== -->
+        <section id="agents" class="diagram-section">
+            <h2>2. Agent Specifications</h2>
+            <p class="subtitle">Each agent's role, model, input/output, and when it runs</p>
+            <div class="mermaid">
+graph LR
+    subgraph SETUP["SETUP PHASE"]
+        direction TB
+        P["PLANNER<br/>---<br/>Model: 8B<br/>Input: 6 chunks + topic<br/>Output: positions + dimensions<br/>Tokens: ~1,500"]
+    end
+
+    subgraph EVIDENCE["EVIDENCE PHASE (Parallel)"]
+        direction TB
+        RF["RESEARCHER FOR<br/>---<br/>Model: None<br/>Input: FAISS queries<br/>Output: 8 evidence chunks<br/>Tokens: 0 (vector search)"]
+        RA["RESEARCHER AGAINST<br/>---<br/>Model: None<br/>Input: FAISS queries<br/>Output: 8 evidence chunks<br/>Tokens: 0 (vector search)"]
+    end
+
+    subgraph ARGUMENT["ARGUMENT PHASE (Parallel)"]
+        direction TB
+        DF["DEBATER FOR<br/>---<br/>Model: 8B<br/>Input: evidence + position<br/>Output: 3 arguments<br/>Tokens: ~3,000"]
+        DA["DEBATER AGAINST<br/>---<br/>Model: 8B<br/>Input: evidence + position<br/>Output: 3 arguments<br/>Tokens: ~3,000"]
+    end
+
+    subgraph JUDGMENT["JUDGMENT PHASE"]
+        direction TB
+        J["JUDGE<br/>---<br/>Model: 8B<br/>Input: both arguments<br/>Output: scores + verdict<br/>Tokens: ~3,500"]
+    end
+
+    subgraph FINAL["FINAL PHASE"]
+        direction TB
+        S["SYNTHESIZER<br/>---<br/>Model: 8B<br/>Input: verdict + arguments<br/>Output: balanced analysis<br/>Tokens: ~2,000"]
+    end
+
+    SETUP --> EVIDENCE --> ARGUMENT --> JUDGMENT --> FINAL
+
+    style SETUP fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style EVIDENCE fill:#e0f2fe,stroke:#0ea5e9,color:#0c4a6e
+    style ARGUMENT fill:#f0fdf4,stroke:#22c55e,color:#166534
+    style JUDGMENT fill:#fef9c3,stroke:#eab308,color:#854d0e
+    style FINAL fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Planner Agent</h4>
+                    <p>Reads the topic and document context. Defines fair FOR and AGAINST positions, identifies 3 debate dimensions. Uses <code>call_llm_cheap</code> (8B, 500 max tokens) since this is a structuring task.</p>
+                </div>
+                <div class="info-card for">
+                    <h4>Researcher FOR</h4>
+                    <p>No LLM call. Searches FAISS index with queries like <i>"evidence supporting..."</i>, <i>"benefits advantages..."</i>. Returns 8 evidence chunks sorted by relevance. Pure vector search = zero tokens.</p>
+                </div>
+                <div class="info-card against">
+                    <h4>Researcher AGAINST</h4>
+                    <p>Same as FOR researcher but with opposing queries: <i>"evidence against..."</i>, <i>"problems limitations..."</i>. Each side gets its own targeted evidence for stronger arguments.</p>
+                </div>
+                <div class="info-card for">
+                    <h4>Debater FOR</h4>
+                    <p>Builds 3 arguments with direct evidence quotes from chunks. Must include reasoning for each point and a preemptive rebuttal anticipating the AGAINST side's strongest argument.</p>
+                </div>
+                <div class="info-card against">
+                    <h4>Debater AGAINST</h4>
+                    <p>Same structure as FOR debater, arguing the opposite position. Uses its own evidence chunks. Both debaters work independently &mdash; they don't see each other's arguments until the Judge.</p>
+                </div>
+                <div class="info-card judge">
+                    <h4>Judge Agent</h4>
+                    <p>Reads BOTH arguments. Scores each side on 5 criteria (0-10 each). Reports winner, margin, reasoning, and strongest/weakest points for each side. Impartial and evidence-based.</p>
+                </div>
+                <div class="info-card for">
+                    <h4>Cross-Examiner FOR</h4>
+                    <p>Only runs if Round 1 is close. Reads the AGAINST argument and finds its weakest point. Challenges it with evidence from FOR's chunks. Raises unanswerable questions.</p>
+                </div>
+                <div class="info-card against">
+                    <h4>Cross-Examiner AGAINST</h4>
+                    <p>Mirror of FOR cross-examiner. Reads FOR's argument and challenges its weakest point with AGAINST evidence. Both cross-examiners run in parallel.</p>
+                </div>
+                <div class="info-card synthesis">
+                    <h4>Synthesizer Agent</h4>
+                    <p>Goes beyond "both sides have merit." Identifies specific common ground, names the core unresolved tension, and provides a nuanced conclusion. 150-200 words of balanced analysis.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 3: ADVERSARIAL PAIRS ========== -->
+        <section id="adversarial" class="diagram-section">
+            <h2>3. Adversarial Parallel Execution</h2>
+            <p class="subtitle">How FOR and AGAINST agents run simultaneously with isolated state</p>
+            <div class="mermaid">
+sequenceDiagram
+    participant M as Main Thread
+    participant TP as ThreadPool
+    participant FOR as FOR Agent
+    participant AGT as AGAINST Agent
+    participant API as Groq API
+    participant IDX as FAISS Index
+
+    Note over M: Stage 4 - Research (Parallel)
+    M->>TP: Submit researcher_for + researcher_against
+
+    par FOR Research
+        TP->>FOR: Start (state copy)
+        FOR->>IDX: 5 semantic queries
+        IDX-->>FOR: 8 evidence chunks
+        FOR-->>TP: state.evidence_for = chunks
+    and AGAINST Research
+        TP->>AGT: Start (state copy)
+        AGT->>IDX: 5 semantic queries
+        IDX-->>AGT: 8 evidence chunks
+        AGT-->>TP: state.evidence_against = chunks
+    end
+
+    TP-->>M: Merge: evidence_for + evidence_against
+
+    Note over M: Stage 5 - Debate (Parallel)
+    M->>TP: Submit debater_for + debater_against
+
+    par FOR Debate
+        TP->>FOR: Start (state copy + evidence_for)
+        Note over FOR: Rate limit wait (5s)
+        FOR->>API: call_llm_strong(evidence_for)
+        API-->>FOR: 3 arguments + rebuttal
+        FOR-->>TP: state.argument_for = JSON
+    and AGAINST Debate
+        TP->>AGT: Start (state copy + evidence_against)
+        Note over AGT: Rate limit wait (5s)
+        AGT->>API: call_llm_strong(evidence_against)
+        API-->>AGT: 3 arguments + rebuttal
+        AGT-->>TP: state.argument_against = JSON
+    end
+
+    TP-->>M: Merge: argument_for + argument_against
+    Note over M: Both sides built independently - no information leakage
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>No Information Leakage</h4>
+                    <p>Each debater only sees its own evidence chunks. They build arguments independently. Neither side can see the other's position until the Judge reads both. This ensures a fair debate.</p>
+                </div>
+                <div class="info-card">
+                    <h4>State Copying</h4>
+                    <p><code>s = {**state}</code> gives each agent its own dict. After both finish, results are merged by side key: <code>evidence_for</code>, <code>argument_for</code>, <code>evidence_against</code>, <code>argument_against</code>.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Rate Limit Staggering</h4>
+                    <p>Even though agents run in parallel threads, the <code>threading.Lock()</code> ensures API calls happen sequentially with 5-second gaps. Parallel agents stagger: t=0s, t=5s.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 4: CONDITIONAL ROUND 2 ========== -->
+        <section id="round2" class="diagram-section">
+            <h2>4. Conditional Round 2: Cross-Examination</h2>
+            <p class="subtitle">Extra round triggers only when the debate is close &mdash; not blind retry</p>
+            <div class="mermaid">
+flowchart LR
+    subgraph R1["ROUND 1"]
+        J1["Judge scores:<br/>FOR: 38/50<br/>AGAINST: 37/50<br/>Margin: narrow"]
+    end
+
+    J1 -->|"3 conditions checked"| COND
+
+    subgraph CONDITIONS["All Must Be True"]
+        C1["max_rounds > 1?"]
+        C2["margin is narrow<br/>or razor-thin?"]
+        C3["budget > $0.15<br/>remaining?"]
+    end
+
+    COND{"All 3<br/>true?"} -->|YES| R2
+    COND -->|NO| SKIP["Skip to<br/>Synthesizer"]
+
+    subgraph R2["ROUND 2: Cross-Examination"]
+        CXF["Cross-Exam FOR<br/>reads AGAINST's argument<br/>challenges weakest point<br/>raises unanswerable Qs"]
+        CXA["Cross-Exam AGAINST<br/>reads FOR's argument<br/>challenges weakest point<br/>raises unanswerable Qs"]
+        CXF --> J2
+        CXA --> J2
+        J2["Judge Round 2<br/>Re-scores with<br/>cross-exam factored in<br/>FOR: 36/50<br/>AGAINST: 39/50"]
+    end
+
+    R2 --> SYNTH["Synthesizer"]
+    SKIP --> SYNTH
+
+    style R1 fill:#fef9c3,stroke:#eab308,color:#854d0e
+    style R2 fill:#fee2e2,stroke:#ef4444,color:#991b1b
+    style CONDITIONS fill:#f0fdf4,stroke:#22c55e,color:#166534
+    style SKIP fill:#f0fdf4,stroke:#22c55e,color:#166534
+    style SYNTH fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Why Not Always Cross-Examine?</h4>
+                    <p>If the verdict is <code>decisive</code> (e.g., FOR: 42 vs AGAINST: 30), cross-examination won't change the outcome. Skipping saves 3 API calls (~8K tokens). Adaptive = efficient.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Cross-Examiners Read Opponents</h4>
+                    <p>These are the <b>only agents that read another agent's output</b>. Cross-Exam FOR reads <code>state.argument_against</code> and challenges its weakest point with evidence from <code>state.evidence_for</code>.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Verdict Can Flip</h4>
+                    <p>Round 2 can reverse the outcome. If FOR won Round 1 narrowly but AGAINST's cross-examination was devastating, the Judge may award Round 2 to AGAINST.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 5: DATA FLOW ========== -->
+        <section id="data" class="diagram-section">
+            <h2>5. Shared State & Data Flow</h2>
+            <p class="subtitle">How data flows between agents via the shared state dictionary</p>
+            <div class="mermaid">
+flowchart TD
+    subgraph STATE["Shared State Dictionary"]
+        direction LR
+        T["topic: 'Is Python better?'"]
+        CH["chunks: [{text, score, index}]"]
+        DP["debate_plan: {for_position,<br/>against_position, dimensions}"]
+        EF["evidence_for: [8 chunks]"]
+        EA["evidence_against: [8 chunks]"]
+        AF["argument_for: {thesis,<br/>3 arguments, rebuttal}"]
+        AA["argument_against: {thesis,<br/>3 arguments, rebuttal}"]
+        CF["cross_exam_for: {challenge,<br/>questions}"]
+        CA["cross_exam_against: {challenge,<br/>questions}"]
+        JG["judgment: {scores, winner,<br/>margin, reasoning}"]
+        SY["synthesis: {analysis,<br/>common_ground, tension}"]
+        LG["log: [{agent, timestamp}]"]
+    end
+
+    PLANNER["planner()"] -->|writes| DP
+    PLANNER -.->|reads| CH
+
+    RESF["researcher(for)"] -->|writes| EF
+    RESF -.->|reads| DP
+
+    RESA["researcher(against)"] -->|writes| EA
+    RESA -.->|reads| DP
+
+    DEBF["debater(for)"] -->|writes| AF
+    DEBF -.->|reads| EF
+    DEBF -.->|reads| DP
+
+    DEBA["debater(against)"] -->|writes| AA
+    DEBA -.->|reads| EA
+    DEBA -.->|reads| DP
+
+    JUDGE["judge()"] -->|writes| JG
+    JUDGE -.->|reads| AF
+    JUDGE -.->|reads| AA
+
+    CXF["cross_examiner(for)"] -->|writes| CF
+    CXF -.->|reads| AA
+    CXF -.->|reads| EF
+
+    CXA["cross_examiner(against)"] -->|writes| CA
+    CXA -.->|reads| AF
+    CXA -.->|reads| EA
+
+    SYNTH["synthesizer()"] -->|writes| SY
+    SYNTH -.->|reads| JG
+    SYNTH -.->|reads| AF
+    SYNTH -.->|reads| AA
+
+    style STATE fill:#f8fafc,stroke:#64748b,color:#1e293b
+            </div>
+        </section>
+
+        <!-- ========== DIAGRAM 6: SCORING RUBRIC ========== -->
+        <section id="scoring" class="diagram-section">
+            <h2>6. Judge's Scoring Rubric</h2>
+            <p class="subtitle">How the Judge evaluates both sides on 5 objective criteria</p>
+            <div class="mermaid">
+graph TD
+    subgraph CRITERIA["5 Criteria (0-10 each)"]
+        C1["Evidence Quality<br/><i>Are claims backed by<br/>specific document evidence?</i>"]
+        C2["Logical Coherence<br/><i>Does the argument flow<br/>logically without fallacies?</i>"]
+        C3["Completeness<br/><i>Are all debate dimensions<br/>addressed?</i>"]
+        C4["Persuasiveness<br/><i>How compelling is the<br/>overall argument?</i>"]
+        C5["Honesty<br/><i>Fair evidence use or<br/>cherry-picking?</i>"]
+    end
+
+    C1 --> SCORE
+    C2 --> SCORE
+    C3 --> SCORE
+    C4 --> SCORE
+    C5 --> SCORE
+
+    SCORE["Total Score<br/>FOR: __/50<br/>AGAINST: __/50"]
+
+    SCORE --> MARGIN{"Score Difference"}
+
+    MARGIN -->|"> 8 pts"| DECISIVE["decisive<br/><i>No Round 2</i>"]
+    MARGIN -->|"4-8 pts"| NARROW["narrow<br/><i>Triggers Round 2</i>"]
+    MARGIN -->|"< 4 pts"| RAZOR["razor-thin<br/><i>Triggers Round 2</i>"]
+
+    style CRITERIA fill:#fef9c3,stroke:#eab308,color:#854d0e
+    style DECISIVE fill:#f0fdf4,stroke:#22c55e,color:#166534
+    style NARROW fill:#fff7ed,stroke:#f97316,color:#9a3412
+    style RAZOR fill:#fee2e2,stroke:#ef4444,color:#991b1b
+            </div>
+
+            <table>
+                <thead>
+                    <tr><th>Criterion</th><th>What It Measures</th><th>Common Issues</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Evidence Quality</td><td>Specific document quotes, not opinions</td><td>Vague references, no direct quotes</td></tr>
+                    <tr><td>Logical Coherence</td><td>Sound reasoning, no logical fallacies</td><td>Non-sequiturs, circular arguments</td></tr>
+                    <tr><td>Completeness</td><td>All dimensions from Planner addressed</td><td>Ignoring 1-2 debate dimensions</td></tr>
+                    <tr><td>Persuasiveness</td><td>Compelling narrative, strong thesis</td><td>Weak opening, no emotional appeal</td></tr>
+                    <tr><td>Honesty</td><td>Fair representation of evidence</td><td>Cherry-picking, misquoting sources</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ========== DIAGRAM 7: RATE LIMITING ========== -->
+        <section id="rate" class="diagram-section">
+            <h2>7. Rate Limiting & Token Budget</h2>
+            <p class="subtitle">How the pipeline respects Groq free tier limits across multiple projects</p>
+            <div class="mermaid">
+flowchart TD
+    subgraph LIMITS["Groq Free Tier Limits"]
+        L1["llama-3.1-8b-instant (USED)<br/>RPM: 30 | RPD: 14.4K | TPM: 6K | TPD: 500K"]
+        L2["llama-3.3-70b-versatile (NOT USED)<br/>RPM: 30 | RPD: 1K | TPM: 12K | TPD: 100K"]
+    end
+
+    subgraph STRATEGY["Our Strategy"]
+        direction TB
+        S1["Use 8b model only<br/>14x more RPD, 5x more TPD<br/>than 70b model"]
+        S2["max_tokens: 500 (cheap) / 1024 (strong)<br/>Prevents oversized responses"]
+        S3["5-second delay between calls<br/>Thread-safe with Lock"]
+        S4["1 retry default<br/>Fewer wasted calls"]
+        S5["30s+ backoff on 429<br/>Auto-retry, don't crash"]
+    end
+
+    subgraph BUDGET["Token Budget Per Debate"]
+        B1["Round 1 only: ~13,000 tokens<br/>(5 LLM calls)"]
+        B2["With Round 2: ~21,500 tokens<br/>(8 LLM calls)"]
+        B3["Daily budget: 500,000 tokens"]
+        B4["Debates per day: 23-38"]
+        B5["Plenty left for Intelligence Hub!"]
+    end
+
+    LIMITS --> STRATEGY --> BUDGET
+
+    style LIMITS fill:#fef2f2,stroke:#ef4444,color:#991b1b
+    style STRATEGY fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style BUDGET fill:#f0fdf4,stroke:#22c55e,color:#166534
+            </div>
+
+            <table>
+                <thead>
+                    <tr><th>Setting</th><th>Value</th><th>Why</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Model (all calls)</td><td>llama-3.1-8b-instant</td><td>Avoids 70b limits (1K RPD, 100K TPD)</td></tr>
+                    <tr><td>call_llm_cheap max_tokens</td><td>500</td><td>Planner JSON is small</td></tr>
+                    <tr><td>call_llm_strong max_tokens</td><td>1,024</td><td>Sufficient for debate JSON</td></tr>
+                    <tr><td>RATE_LIMIT_DELAY</td><td>5 seconds</td><td>Safely under 6K TPM</td></tr>
+                    <tr><td>Default retries</td><td>1</td><td>Each retry = wasted tokens</td></tr>
+                    <tr><td>429 backoff</td><td>30+ seconds</td><td>Groq needs recovery time</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ========== DIAGRAM 8: FILE STRUCTURE ========== -->
+        <section id="files" class="diagram-section">
+            <h2>8. File Structure & Dependencies</h2>
+            <p class="subtitle">How the project files relate to each other</p>
+            <div class="mermaid">
+graph TD
+    subgraph CORE["Core Files"]
+        H["helpers.py<br/><i>~795 lines</i><br/>---<br/>CostTracker<br/>SemanticCache<br/>EvalHarness<br/>load_and_chunk()<br/>embed() / build_index() / search()<br/>call_llm() / call_llm_cheap() / call_llm_strong()<br/>parse_json()<br/>Rate limiter"]:::core
+    end
+
+    subgraph SOLUTION["Complete Solution"]
+        P["project_debate_system.py<br/><i>~545 lines</i><br/>---<br/>9 Agent functions<br/>Parallel adversarial pairs<br/>Conditional Round 2<br/>Report compiler"]:::solution
+    end
+
+    subgraph STARTER["Student Code"]
+        S["debate_starter.py<br/><i>Starter template</i><br/>---<br/>Agent prompts (given)<br/>Pipeline (TODO)<br/>5 Milestones"]:::starter
+    end
+
+    subgraph UI["Web Interface"]
+        ST["streamlit_app.py<br/><i>~490 lines</i><br/>---<br/>PDF upload + topic input<br/>8-tab results display<br/>Score breakdown table<br/>Cost dashboard"]:::ui
+    end
+
+    subgraph CONFIG["Config"]
+        ENV[".env<br/>GROQ_API_KEY"]:::config
+        REQ["requirements.txt<br/>8 packages"]:::config
+    end
+
+    subgraph DOCS["Documentation"]
+        GUIDE["DEBATE_SYSTEM_GUIDE.md<br/>Complete code walkthrough"]:::docs
+        ARCH["architecture.html<br/>This file"]:::docs
+    end
+
+    subgraph DATA["Sample Data"]
+        PDF1["cloud_computing.pdf"]:::data
+        PDF2["neural_networks.pdf"]:::data
+        PDF3["sustainable_energy.pdf"]:::data
+    end
+
+    P -->|imports| H
+    S -->|imports| H
+    ST -->|imports| H
+    ST -->|imports| P
+
+    ENV -.->|loads API key| H
+    REQ -.->|pip install| H
+
+    PDF1 -.->|input| P
+    PDF2 -.->|input| P
+    PDF3 -.->|input| P
+
+    classDef core fill:#dbeafe,stroke:#3b82f6,color:#1e40af,stroke-width:2px
+    classDef solution fill:#ede9fe,stroke:#8b5cf6,color:#5b21b6,stroke-width:2px
+    classDef starter fill:#fef3c7,stroke:#f59e0b,color:#92400e,stroke-width:2px
+    classDef ui fill:#fce7f3,stroke:#ec4899,color:#9d174d,stroke-width:2px
+    classDef config fill:#f0fdf4,stroke:#22c55e,color:#166534
+    classDef docs fill:#e0f2fe,stroke:#0ea5e9,color:#0c4a6e
+    classDef data fill:#f8fafc,stroke:#94a3b8,color:#475569
+            </div>
+        </section>
+
+        <footer>
+            <p>Multi-Agent Debate System &mdash; Architecture Reference</p>
+            <p>Open this file in any browser. Diagrams rendered with Mermaid.js</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 15,
+                nodeSpacing: 30,
+                rankSpacing: 40
+            },
+            sequence: {
+                useMaxWidth: true,
+                showSequenceNumbers: false,
+                actorMargin: 30,
+                messageMargin: 30
+            }
+        });
+    </script>
+</body>
+</html>

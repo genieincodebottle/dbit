@@ -88,7 +88,7 @@ Return JSON:
 # ============================================================
 
 def planner(state, tracker):
-    sample_text = "\n---\n".join([c["text"] for c in state["chunks"][:8]])
+    sample_text = "\n---\n".join([c["text"] for c in state["chunks"][:5]])  # reduced from 8 for free tier TPM
 
     # On retry, include Critic feedback so Planner adapts
     retry_context = ""
@@ -104,7 +104,7 @@ def planner(state, tracker):
 
     parsed = parse_json(result["text"])
     state["plan"] = parsed
-    log_agent(state, "planner", {"chunks": 8}, parsed,
+    log_agent(state, "planner", {"chunks": 5}, parsed,
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
 
     print(f"  [Planner] Topic: {parsed.get('main_topic', '?')}")
@@ -112,7 +112,7 @@ def planner(state, tracker):
 
 
 def summarizer(state, tracker):
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
 
     result = call_llm_strong(
@@ -124,14 +124,14 @@ def summarizer(state, tracker):
 
     parsed = parse_json(result["text"])
     state["summary"] = parsed
-    log_agent(state, "summarizer", {"chunks": 15}, parsed.get("summary", "")[:80],
+    log_agent(state, "summarizer", {"chunks": 6}, parsed.get("summary", "")[:80],
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Summarizer] {len(parsed.get('summary', ''))} chars, {len(parsed.get('key_points', []))} points")
     return state
 
 
 def fact_extractor(state, tracker):
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
 
     result = call_llm_strong(
         system=FACT_EXTRACTOR_SYSTEM,
@@ -142,14 +142,14 @@ def fact_extractor(state, tracker):
 
     parsed = parse_json(result["text"])
     state["facts"] = parsed
-    log_agent(state, "fact_extractor", {"chunks": 15}, f"{len(parsed.get('facts', []))} facts",
+    log_agent(state, "fact_extractor", {"chunks": 6}, f"{len(parsed.get('facts', []))} facts",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Fact Extractor] {len(parsed.get('facts', []))} facts")
     return state
 
 
 def quiz_generator(state, tracker):
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
 
     result = call_llm_strong(
@@ -161,14 +161,14 @@ def quiz_generator(state, tracker):
 
     parsed = parse_json(result["text"])
     state["quiz"] = parsed
-    log_agent(state, "quiz_generator", {"chunks": 15}, f"{len(parsed.get('questions', []))} questions",
+    log_agent(state, "quiz_generator", {"chunks": 6}, f"{len(parsed.get('questions', []))} questions",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Quiz Gen] {len(parsed.get('questions', []))} questions")
     return state
 
 
 def gap_analyzer(state, tracker):
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
 
     result = call_llm_strong(
@@ -180,7 +180,7 @@ def gap_analyzer(state, tracker):
 
     parsed = parse_json(result["text"])
     state["gaps"] = parsed
-    log_agent(state, "gap_analyzer", {"chunks": 15},
+    log_agent(state, "gap_analyzer", {"chunks": 6},
               f"{len(parsed.get('gaps', []))} gaps, coverage={parsed.get('coverage_score', '?')}",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Gap Analyzer] {len(parsed.get('gaps', []))} gaps")
@@ -188,7 +188,7 @@ def gap_analyzer(state, tracker):
 
 
 def critic(state, tracker):
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:10]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:5]])  # reduced from 10 for free tier
 
     outputs = {
         "summary": state.get("summary", {}).get("summary", "MISSING"),
@@ -345,7 +345,7 @@ def report_compiler(state):
 # MAIN PIPELINE
 # ============================================================
 
-def run_pipeline(pdf_path, budget=0.50, max_retries=2, use_cache=True):
+def run_pipeline(pdf_path, budget=0.10, max_retries=1, use_cache=True):
     """
     Run the full Document Intelligence Hub pipeline.
 
@@ -377,11 +377,11 @@ def run_pipeline(pdf_path, budget=0.50, max_retries=2, use_cache=True):
     state = init_state()
     all_results = []
     for q in ["main topic overview", "key concept definition",
-              "important conclusion", "methodology approach", "example illustration"]:
-        all_results.extend(search(index, chunks, q, k=4))
+              "important conclusion"]:
+        all_results.extend(search(index, chunks, q, k=3))
 
     seen = set()
-    state["chunks"] = [c for c in all_results if c["index"] not in seen and not seen.add(c["index"])][:20]
+    state["chunks"] = [c for c in all_results if c["index"] not in seen and not seen.add(c["index"])][:10]
     print(f"  Selected {len(state['chunks'])} unique chunks")
 
     # Step 3: Planner
@@ -434,7 +434,7 @@ def run_single_query(pdf_path, question, budget=0.20):
     index = build_index(chunks)
 
     state = init_state(question)
-    results = search(index, chunks, question, k=10)
+    results = search(index, chunks, question, k=6)
     state["chunks"] = results
 
     state = planner(state, tracker)
@@ -484,7 +484,7 @@ Return JSON: {"tests": [{"question": "...", "keywords": ["key1", "key2"], "diffi
         )
 
     def pipeline_for_eval(question):
-        return run_single_query(pdf_path, question, budget=0.15)
+        return run_single_query(pdf_path, question, budget=0.10)
 
     harness.run(pipeline_for_eval)
     harness.report()
@@ -497,8 +497,8 @@ Return JSON: {"tests": [{"question": "...", "keywords": ["key1", "key2"], "diffi
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Document Intelligence Hub")
     parser.add_argument("pdf", help="Path to PDF document")
-    parser.add_argument("--budget", type=float, default=0.50, help="Cost budget in USD (default: $0.50)")
-    parser.add_argument("--retries", type=int, default=2, help="Max retry attempts (default: 2)")
+    parser.add_argument("--budget", type=float, default=0.10, help="Cost budget in USD (default: $0.10)")
+    parser.add_argument("--retries", type=int, default=1, help="Max retry attempts (default: 1, reduced for free tier)")
     parser.add_argument("--eval", action="store_true", help="Run evaluation harness after pipeline")
     parser.add_argument("--no-cache", action="store_true", help="Disable semantic cache")
 

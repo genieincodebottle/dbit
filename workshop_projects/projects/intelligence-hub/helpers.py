@@ -24,9 +24,25 @@ import time
 import re
 import os
 import hashlib
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ============================================================
+# RATE LIMITING (Groq Free Tier)
+# ============================================================
+# Free tier limits (from console.groq.com):
+#   llama-3.1-8b-instant:    RPM=30, RPD=14.4K, TPM=6K,  TPD=500K
+#   llama-3.3-70b-versatile: RPM=30, RPD=1K,    TPM=12K, TPD=100K
+#
+# Using 8b model only to avoid 70b limits (1K RPD, 100K TPD).
+# 8b has generous limits: 14.4K RPD, 500K TPD - plenty for labs.
+# Strategy: enforce delay between calls + keep max_tokens low + handle 429 gracefully.
+
+_rate_limit_lock = threading.Lock()
+_last_llm_call_time = 0
+RATE_LIMIT_DELAY = 5  # seconds between API calls (keeps us safely under TPM limits)
 
 # ============================================================
 # LLM CLIENT SETUP (Groq - free tier)
@@ -261,15 +277,17 @@ def search(index, chunks, query, k=5):
 # ============================================================
 
 def call_llm(prompt, system="You are a helpful assistant.",
-             model=None, temperature=0, max_tokens=2000, json_output=False,
-             retries=2, backoff_base=2.0):
+             model=None, temperature=0, max_tokens=1024, json_output=False,
+             retries=1, backoff_base=2.0):
     """
     Call the LLM with automatic retry on transient failures.
+    Includes rate-limit-aware retry (429 errors get 30s+ backoff).
 
     Retry strategy (exponential backoff):
       Attempt 1: immediate
       Attempt 2: wait 2s
       Attempt 3: wait 4s
+      Attempt 4: wait 8s (or 30s for rate limits)
 
     Args:
         prompt, system, model, temperature, max_tokens, json_output: standard LLM params
@@ -286,6 +304,16 @@ def call_llm(prompt, system="You are a helpful assistant.",
 
     for attempt in range(retries + 1):
         try:
+            # Rate limiting: enforce minimum delay between API calls
+            # This prevents hitting Groq free tier TPM limits
+            global _last_llm_call_time
+            with _rate_limit_lock:
+                now = time.time()
+                elapsed = now - _last_llm_call_time
+                if elapsed < RATE_LIMIT_DELAY:
+                    time.sleep(RATE_LIMIT_DELAY - elapsed)
+                _last_llm_call_time = time.time()
+
             start = time.time()
 
             if PROVIDER == "groq":
@@ -323,7 +351,14 @@ def call_llm(prompt, system="You are a helpful assistant.",
 
         except Exception as e:
             last_error = e
-            if attempt < retries:
+            error_msg = str(e).lower()
+
+            # Handle rate limit errors (429) with longer backoff
+            if "rate_limit" in error_msg or "429" in error_msg or "too many" in error_msg:
+                wait = max(30, backoff_base ** (attempt + 3))
+                print(f"    [rate limit] Groq free tier limit hit. Waiting {wait:.0f}s before retry...")
+                time.sleep(wait)
+            elif attempt < retries:
                 wait = backoff_base ** attempt
                 print(f"    [retry] Attempt {attempt + 1} failed: {e}. Waiting {wait:.0f}s...")
                 time.sleep(wait)
@@ -332,17 +367,21 @@ def call_llm(prompt, system="You are a helpful assistant.",
 
 
 def call_llm_cheap(prompt, system="You are a helpful assistant.",
-                   temperature=0, max_tokens=1000, json_output=False):
-    """Cheap/fast model: Llama 3.1 8B on Groq (free). Use for planners and simple routing."""
+                   temperature=0, max_tokens=500, json_output=False):
+    """Fast model: Llama 3.1 8B on Groq (free). Use for planners and simple routing.
+    max_tokens=500 (planner JSON is small)."""
     model = "llama-3.1-8b-instant"
     return call_llm(prompt, system, model=model,
                     temperature=temperature, max_tokens=max_tokens, json_output=json_output)
 
 
 def call_llm_strong(prompt, system="You are a helpful assistant.",
-                    temperature=0, max_tokens=8192, json_output=False):
-    """Strong model: Llama 3.3 70B on Groq (free). Use for reasoning, debate, judgment."""
-    model = "llama-3.3-70b-versatile"
+                    temperature=0, max_tokens=1024, json_output=False):
+    """Strong model: Also Llama 3.1 8B on Groq (free). Use for reasoning, analysis, judgment.
+    Using 8b for all calls to avoid 70b limits (1K RPD, 100K TPD).
+    8b has 14.4K RPD and 500K TPD - plenty for lab use across multiple projects.
+    Students can swap to llama-3.3-70b-versatile if they have a paid plan."""
+    model = "llama-3.1-8b-instant"
     return call_llm(prompt, system, model=model,
                     temperature=temperature, max_tokens=max_tokens, json_output=json_output)
 

@@ -72,7 +72,7 @@ Return JSON:
 
 def planner(state, tracker):
     """Analyzes document structure. Works standalone."""
-    sample_text = "\n---\n".join([c["text"] for c in state["chunks"][:8]])
+    sample_text = "\n---\n".join([c["text"] for c in state["chunks"][:5]])  # reduced from 8 for free tier TPM
 
     # Adaptive: on retry, include critic feedback
     retry_hint = ""
@@ -86,7 +86,7 @@ def planner(state, tracker):
 
     parsed = parse_json(result["text"])
     state["plan"] = parsed
-    log_agent(state, "planner", {"chunks": 8}, parsed,
+    log_agent(state, "planner", {"chunks": 5}, parsed,
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Planner] Topic: {parsed.get('main_topic', '?')}")
     return state
@@ -94,7 +94,7 @@ def planner(state, tracker):
 
 def summarizer(state, tracker):
     """Writes executive summary. Works standalone."""
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
     result = call_llm_strong(
         system=SUMMARIZER_SYSTEM,
@@ -102,7 +102,7 @@ def summarizer(state, tracker):
         json_output=True)
     tracker.record(result, "summarizer")
     state["summary"] = parse_json(result["text"])
-    log_agent(state, "summarizer", {"chunks": 15}, state["summary"].get("summary", "")[:80],
+    log_agent(state, "summarizer", {"chunks": 6}, state["summary"].get("summary", "")[:80],
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Summarizer] Done")
     return state
@@ -110,12 +110,12 @@ def summarizer(state, tracker):
 
 def fact_extractor(state, tracker):
     """Extracts facts. Works standalone."""
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     result = call_llm_strong(system=FACT_EXTRACTOR_SYSTEM,
                              prompt=f"Extract facts:\n\n{chunks_text}", json_output=True)
     tracker.record(result, "fact_extractor")
     state["facts"] = parse_json(result["text"])
-    log_agent(state, "fact_extractor", {"chunks": 15},
+    log_agent(state, "fact_extractor", {"chunks": 6},
               f"{len(state['facts'].get('facts', []))} facts",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Fact Extractor] {len(state['facts'].get('facts', []))} facts")
@@ -124,7 +124,7 @@ def fact_extractor(state, tracker):
 
 def quiz_generator(state, tracker):
     """Creates MCQs. Works standalone."""
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
     result = call_llm_strong(
         system=QUIZ_SYSTEM,
@@ -132,7 +132,7 @@ def quiz_generator(state, tracker):
         json_output=True)
     tracker.record(result, "quiz_generator")
     state["quiz"] = parse_json(result["text"])
-    log_agent(state, "quiz_generator", {"chunks": 15},
+    log_agent(state, "quiz_generator", {"chunks": 6},
               f"{len(state['quiz'].get('questions', []))} questions",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Quiz Gen] {len(state['quiz'].get('questions', []))} questions")
@@ -141,7 +141,7 @@ def quiz_generator(state, tracker):
 
 def gap_analyzer(state, tracker):
     """Finds gaps. Works standalone."""
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:15]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:6]])  # reduced from 15 for free tier
     plan = state.get("plan", {})
     result = call_llm_strong(
         system=GAP_ANALYZER_SYSTEM,
@@ -149,7 +149,7 @@ def gap_analyzer(state, tracker):
         json_output=True)
     tracker.record(result, "gap_analyzer")
     state["gaps"] = parse_json(result["text"])
-    log_agent(state, "gap_analyzer", {"chunks": 15},
+    log_agent(state, "gap_analyzer", {"chunks": 6},
               f"{len(state['gaps'].get('gaps', []))} gaps",
               {"tokens": result["tokens"], "latency_ms": result["latency_ms"]})
     print(f"  [Gap Analyzer] {len(state['gaps'].get('gaps', []))} gaps")
@@ -158,7 +158,7 @@ def gap_analyzer(state, tracker):
 
 def critic(state, tracker):
     """Quality gate. Works standalone."""
-    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:10]])
+    chunks_text = "\n---\n".join([c["text"] for c in state["chunks"][:5]])  # reduced from 10 for free tier
     outputs = {
         "summary": state.get("summary", {}).get("summary", "MISSING"),
         "facts_sample": [f["fact"] for f in state.get("facts", {}).get("facts", [])[:3]],
@@ -194,7 +194,7 @@ def critic(state, tracker):
 # TEST: python hub_starter.py your_doc.pdf
 #       You should see output from each agent in order.
 
-def run_pipeline(pdf_path, budget=0.50, max_retries=2):
+def run_pipeline(pdf_path, budget=0.10, max_retries=1):
     tracker = CostTracker(budget=budget)
 
     print(f"\n{'=' * 60}")
@@ -358,8 +358,8 @@ def run_evaluation(pdf_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Document Intelligence Hub")
     parser.add_argument("pdf", help="Path to PDF document")
-    parser.add_argument("--budget", type=float, default=0.50, help="Budget in USD")
-    parser.add_argument("--retries", type=int, default=2, help="Max retries")
+    parser.add_argument("--budget", type=float, default=0.10, help="Budget in USD")
+    parser.add_argument("--retries", type=int, default=1, help="Max retries (reduced for free tier)")
     parser.add_argument("--eval", action="store_true", help="Run evaluation harness")
 
     args = parser.parse_args()
