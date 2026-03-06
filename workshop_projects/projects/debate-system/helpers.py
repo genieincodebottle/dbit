@@ -379,7 +379,7 @@ def call_llm_strong(prompt, system="You are a helpful assistant.",
     Using 8b for all calls to avoid 70b limits (1K RPD, 100K TPD).
     8b has 14.4K RPD and 500K TPD - plenty for lab use across multiple projects.
     Students can swap to llama-3.3-70b-versatile if they have a paid plan."""
-    model = "llama-3.1-8b-instant"
+    model = "llama-3.3-70b-versatile"
     return call_llm(prompt, system, model=model,
                     temperature=temperature, max_tokens=max_tokens, json_output=json_output)
 
